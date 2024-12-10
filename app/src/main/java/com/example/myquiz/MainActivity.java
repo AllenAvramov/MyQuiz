@@ -150,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
         option4Button.setText(options[currentQuestionIndex][3]);
         option4Button.setTag(3);
         questionImagesView.setImageResource(questionImages[currentQuestionIndex]);
-
     }
 
     private void endQuiz() {
@@ -164,8 +163,6 @@ public class MainActivity extends AppCompatActivity {
         exitButton.setVisibility(View.VISIBLE);
         questionImagesView.setImageResource(R.drawable.end);
         countDownTimer.cancel();
-
-
     }
 
 
