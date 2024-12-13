@@ -181,6 +181,9 @@ public class MainActivity extends AppCompatActivity {
         displayQuestion();
     }
 
+
+
+
     private void startTimer() {
         countDownTimer = new CountDownTimer(START_TIME_IN_MILLIS, 1000) {
             @Override
