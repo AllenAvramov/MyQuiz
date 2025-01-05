@@ -1,5 +1,8 @@
 package com.example.myquiz;
 
+import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.View;
@@ -8,58 +11,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import androidx.appcompat.app.AppCompatActivity;
-
 
 public class MainActivity extends AppCompatActivity {
     private CountDownTimer countDownTimer;
     private static final long START_TIME_IN_MILLIS = 30000;
+
     private TextView questionTextView, scoreTextView, timerTextView;
-    private Button option1Button, option2Button, option3Button, option4Button, restartButton, startButton ,exitButton;
-    private ImageView questionImagesView;
+    private Button option1Button, option2Button, option3Button, option4Button, restartButton, startButton, exitButton;
 
+    private DataBaseHelper dataBaseHelper;
+    private Cursor questionCursor;
 
-    String[] questions = {
-            "What house does Harry belong to?",
-            "Who is Harry's godfather?",
-            "What is the name of Harry's pet owl?",
-            "Who is the Half-Blood Prince?",
-            "What spell is used to disarm an opponent?",
-            "What platform at King's Cross Station does the Hogwarts Express depart from?",
-            "What shape is Harry's scar?",
-            "What is the name of the Weasley's house?",
-            "What potion grants the drinker good luck?",
-            "Who is the headmaster of Hogwarts when Harry first attends?"
-    };
-
-    String[][] options = {
-            { "Hufflepuff", "Ravenclaw", "Gryffindor", "Slytherin"},
-            {"Sirius Black", "Remus Lupin", "Albus Dumbledore", "Severus Snape"},
-            { "Scabbers", "Crookshanks", "Hedwig", "Errol"},
-            { "Tom Riddle", "Draco Malfoy", "Harry Potter", "Severus Snape"},
-            { "Stupefy", "Expelliarmus", "Avada Kedavra", "Wingardium Leviosa"},
-            {"Platform 9 3/4", "Platform 10", "Platform 9", "Platform 8 3/4"},
-            { "Star","Lightning bolt", "Circle", "Triangle"},
-            { "Grimmauld Place", "Hogwarts", "The Burrow", "Shell Cottage"},
-            {"Felix Felicis", "Polyjuice Potion", "Veritaserum", "Amortentia"},
-            { "Minerva McGonagall", "Severus Snape", "Dolores Umbridge", "Albus Dumbledore"}
-    };
-
-    int[] questionImages = {
-            R.drawable.question1,
-            R.drawable.question2,
-            R.drawable.question3,
-            R.drawable.question4,
-            R.drawable.question5,
-            R.drawable.question6,
-            R.drawable.question7,
-            R.drawable.question8,
-            R.drawable.question9,
-            R.drawable.question10
-    };
-
-    private final int[] correctAnswers = {2, 0, 2, 3, 1, 0, 1, 2, 0, 3 }; // Indexes of the correct answers
     private int currentQuestionIndex = 0;
     private int score = 0;
 
@@ -68,10 +31,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        dataBaseHelper = new DataBaseHelper(this);
+
         timerTextView = findViewById(R.id.timerTextView);
-        questionImagesView = findViewById(R.id.questionImageView);
         exitButton = findViewById(R.id.exitButton);
-        // Initialize views
+
+
         questionTextView = findViewById(R.id.questionTextView);
         option1Button = findViewById(R.id.option1Button);
         option2Button = findViewById(R.id.option2Button);
@@ -81,9 +46,10 @@ public class MainActivity extends AppCompatActivity {
         restartButton = findViewById(R.id.restartButton);
         startButton = findViewById(R.id.startButton);
 
-        // Display the first question
+        loadQuestionsFromDatabase();
+
         startButton.setOnClickListener(view -> {
-            startButton.setVisibility(View.GONE); // Hide Start button
+            startButton.setVisibility(View.GONE);
             exitButton.setVisibility(View.GONE);
             option1Button.setVisibility(View.VISIBLE);
             option2Button.setVisibility(View.VISIBLE);
@@ -92,39 +58,36 @@ public class MainActivity extends AppCompatActivity {
             scoreTextView.setVisibility(View.VISIBLE);
             timerTextView.setVisibility(View.VISIBLE);
 
-            startTimer(); // Start the timer
-            displayQuestion(); // Show the first question
+            startTimer();
+            displayQuestion();
         });
 
         exitButton.setOnClickListener(view -> {
-            // Exit the app
-            finish(); // Close the current activity
-            System.exit(0); // Optional: Terminate the app process
+            finish();
+            System.exit(0);
         });
 
-        // Set button click listeners
-        View.OnClickListener answerClickListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Button clickedButton = (Button) view;
-                int selectedAnswerIndex = (int) clickedButton.getTag();
+        View.OnClickListener answerClickListener = view -> {
+            Button clickedButton = (Button) view;
+            int selectedAnswerIndex = (int) clickedButton.getTag();
 
-                // Check if the answer is correct
-                if (selectedAnswerIndex == correctAnswers[currentQuestionIndex]) {
+            if (questionCursor.moveToPosition(currentQuestionIndex)) {
+                int correctAnswer = questionCursor.getInt(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_CORRECT_ANSWER));
+
+                if (selectedAnswerIndex == correctAnswer) {
                     score++;
-                    Toast.makeText(MainActivity.this, "Right!", Toast.LENGTH_SHORT).show();
-                    scoreTextView.setText("Score: " + score);
-                } else{
+                    Toast.makeText(MainActivity.this, "Correct!", Toast.LENGTH_SHORT).show();
+                } else {
                     Toast.makeText(MainActivity.this, "Wrong!", Toast.LENGTH_SHORT).show();
                 }
+                scoreTextView.setText("Score: " + score);
+            }
 
-                // Move to the next question or finish the quiz
-                currentQuestionIndex++;
-                if (currentQuestionIndex < questions.length) {
-                    displayQuestion();
-                } else {
-                    endQuiz();
-                }
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questionCursor.getCount()) {
+                displayQuestion();
+            } else {
+                endQuiz();
             }
         };
 
@@ -133,22 +96,33 @@ public class MainActivity extends AppCompatActivity {
         option3Button.setOnClickListener(answerClickListener);
         option4Button.setOnClickListener(answerClickListener);
 
-        // Restart button listener
         restartButton.setOnClickListener(view -> restartQuiz());
     }
 
-    private void displayQuestion() {
-        questionTextView.setText(questions[currentQuestionIndex]);
-        option1Button.setText(options[currentQuestionIndex][0]);
-        option1Button.setTag(0);
-        option2Button.setText(options[currentQuestionIndex][1]);
-        option2Button.setTag(1);
-        option3Button.setText(options[currentQuestionIndex][2]);
-        option3Button.setTag(2);
-        option4Button.setText(options[currentQuestionIndex][3]);
-        option4Button.setTag(3);
-        questionImagesView.setImageResource(questionImages[currentQuestionIndex]);
+    private void loadQuestionsFromDatabase() {
+        SQLiteDatabase db = dataBaseHelper.getReadableDatabase();
+        questionCursor = db.query(DataBaseHelper.TABLE_QUESTIONS, null, null, null, null, null, null);
+    }
 
+    private void displayQuestion() {
+        if (questionCursor.moveToPosition(currentQuestionIndex)) {
+            String question = questionCursor.getString(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_QUESTION));
+            String option1 = questionCursor.getString(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_OPTION1));
+            String option2 = questionCursor.getString(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_OPTION2));
+            String option3 = questionCursor.getString(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_OPTION3));
+            String option4 = questionCursor.getString(questionCursor.getColumnIndexOrThrow(DataBaseHelper.COLUMN_OPTION4));
+
+            questionTextView.setText(question);
+            option1Button.setText(option1);
+            option1Button.setTag(1);
+            option2Button.setText(option2);
+            option2Button.setTag(2);
+            option3Button.setText(option3);
+            option3Button.setTag(3);
+            option4Button.setText(option4);
+            option4Button.setTag(4);
+
+        }
     }
 
     private void endQuiz() {
@@ -160,12 +134,16 @@ public class MainActivity extends AppCompatActivity {
         restartButton.setVisibility(View.VISIBLE);
         timerTextView.setVisibility(View.GONE);
         exitButton.setVisibility(View.VISIBLE);
-        questionImagesView.setImageResource(R.drawable.end);
         countDownTimer.cancel();
 
+        // Fetching from LoginActivity UserName
+        String username = getIntent().getStringExtra("USERNAME");
 
+        // Update the score in the database
+        if (username != null) {
+            dataBaseHelper.updateScore(username, score);
+        }
     }
-
 
     private void restartQuiz() {
         score = 0;
@@ -178,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
         restartButton.setVisibility(View.GONE);
         timerTextView.setVisibility(View.VISIBLE);
         exitButton.setVisibility(View.GONE);
-        restartTimer();
+        startTimer();
         displayQuestion();
     }
 
@@ -186,25 +164,15 @@ public class MainActivity extends AppCompatActivity {
         countDownTimer = new CountDownTimer(START_TIME_IN_MILLIS, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                // Update the timer every second
                 timerTextView.setText("Time: " + millisUntilFinished / 1000);
             }
 
             @Override
             public void onFinish() {
-                // Handle when the timer finishes
                 timerTextView.setText("Time: 0");
-                // Optionally, disable buttons or end the quiz
                 Toast.makeText(MainActivity.this, "Time's up!", Toast.LENGTH_SHORT).show();
                 endQuiz();
             }
         }.start();
-    }
-
-    private void restartTimer() {
-        if (countDownTimer != null) {
-            countDownTimer.cancel(); // Cancel the current timer
-        }
-        startTimer(); // Start a new timer
     }
 }

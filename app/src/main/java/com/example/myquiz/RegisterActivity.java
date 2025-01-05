@@ -15,6 +15,7 @@ public class RegisterActivity extends AppCompatActivity {
     private Button registerButton, backToLoginButton;
     private DataBaseHelper dbHelper;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,6 +51,7 @@ public class RegisterActivity extends AppCompatActivity {
                         Toast.makeText(RegisterActivity.this, "Username already exists. Try a different one.", Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(RegisterActivity.this, "Registration successful!", Toast.LENGTH_SHORT).show();
+                        dbHelper.addScore(username, 0);
                         // Navigate back to LoginActivity
                         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
                         startActivity(intent);

@@ -28,13 +28,16 @@ public class LoginActivity extends AppCompatActivity {
 
         dataBaseHelper = new DataBaseHelper(this);
 
+
+
         loginButton.setOnClickListener(view -> {
-            String username = userNameText.getText().toString();
+            String userName = userNameText.getText().toString();
             String password = passwordText.getText().toString();
 
-            if (validateLogin(username, password)) {
+            if (validateLogin(userName, password)) {
                 // Navigate to the quiz (MainActivity)
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                intent.putExtra("USERNAME", userName);
                 startActivity(intent);
                 finish();
             } else {
@@ -43,7 +46,9 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         registerButton.setOnClickListener(view -> {
+            String username = userNameText.getText().toString();
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            intent.putExtra("username", username);
             startActivity(intent);
             finish();
         });
@@ -51,7 +56,12 @@ public class LoginActivity extends AppCompatActivity {
 
     private boolean validateLogin(String username, String password) {
         SQLiteDatabase db = dataBaseHelper.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM users WHERE username = ? AND password = ?", new String[]{username, password});
+        Cursor cursor = db.rawQuery(
+                "SELECT * FROM " + DataBaseHelper.TABLE_USERS + " WHERE " +
+                        DataBaseHelper.COLUMN_USERNAME + " = ? AND " +
+                        DataBaseHelper.COLUMN_PASSWORD + " = ?",
+                new String[]{username, password}
+        );
         boolean isValid = cursor.getCount() > 0;
         cursor.close();
         return isValid;
