@@ -1,13 +1,13 @@
 package com.example.myquiz;
 
-import android.content.Intent;
+
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -136,13 +136,31 @@ public class MainActivity extends AppCompatActivity {
         exitButton.setVisibility(View.VISIBLE);
         countDownTimer.cancel();
 
+
+
         // Fetching from LoginActivity UserName
         String username = getIntent().getStringExtra("USERNAME");
+        int lastScore = -1;
+        String lastDate = null;
 
-        // Update the score in the database
+
         if (username != null) {
+            // Fetch the last score and Date from the database
+            Pair<Integer, String> lastScoreAndDate = dataBaseHelper.getLastScoreAndDate(username);
+            lastScore = lastScoreAndDate.first;
+            lastDate = lastScoreAndDate.second;
+
+
+            // Update the score in the dataBase
             dataBaseHelper.updateScore(username, score);
+            // Update the Date in the dataBase
+            dataBaseHelper.updateDate(username);
         }
+        String lastScoreText = lastScore != -1
+                ? "Your last score was: " + lastScore + " on " + (lastDate != null ? lastDate : "unknown date")
+                : "No previous score found.";
+        questionTextView.setText("Quiz Over! " + lastScoreText + "\nYour final score is: " + score);
+
     }
 
     private void restartQuiz() {

@@ -2,8 +2,10 @@ package com.example.myquiz;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Pair;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -11,7 +13,7 @@ import java.util.Locale;
 
 public class DataBaseHelper extends SQLiteOpenHelper {
     public static final String DATABASE_NAME = "MyQuizData";
-    public static final int DATABASE_VERSION = 3;
+    public static final int DATABASE_VERSION = 5;
 
     // Table Names
     public static final String TABLE_USERS = "users";
@@ -119,11 +121,38 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_SCORE, newScore);
 
-        String currentDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
-        values.put(COLUMN_DATE, currentDate); // COLUMN_DATE is the name of your date column
-
-        // Update the score where username matches
+        // Update only the score where username matches
         db.update(TABLE_SCORES, values, COLUMN_USERNAME + " = ?", new String[]{username});
+    }
+
+    public void updateDate(String username) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+
+        String currentDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+        values.put(COLUMN_DATE, currentDate);
+
+        // Update only the date where username matches
+        db.update(TABLE_SCORES, values, COLUMN_USERNAME + " = ?", new String[]{username});
+    }
+
+    public Pair<Integer, String> getLastScoreAndDate(String username) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        int lastScore = -1; // Default to -1 to indicate no score found
+        String lastDate = null;
+
+        String query = "SELECT " + COLUMN_SCORE + ", " + COLUMN_DATE +
+                " FROM " + TABLE_SCORES +
+                " WHERE " + COLUMN_USERNAME + " = ?" +
+                " ORDER BY " + COLUMN_DATE + " DESC LIMIT 1";
+        Cursor cursor = db.rawQuery(query, new String[]{username});
+
+        if (cursor.moveToFirst()) {
+            lastScore = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SCORE));
+            lastDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DATE));
+        }
+        cursor.close();
+        return new Pair<>(lastScore, lastDate);
     }
 
 
